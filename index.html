@@ -290,7 +290,7 @@ textarea#out{width:100%;min-height:160px;font:12px/1.4 ui-monospace,Consolas,mon
 .qrmini b{font-size:12px;color:#0047cf;text-transform:uppercase;letter-spacing:.3px}
 .qrmini img,.qrmini canvas{display:block}
 body.admin.qrOn .qrmini{display:flex}
-body[data-view="eu"] .qrmini{display:none!important}
+body[data-tela="eu"] .qrmini{display:none!important}
 body.admin.qrOn{padding-bottom:250px}
 body.membro .tabs .tab,body.membro #outBtn,body.membro .navb.adm,body.membro .qrmini{display:none!important}
 body.membro{font-size:16px}
@@ -556,7 +556,7 @@ function drawLists(){
     $(k).innerHTML=arr.map(([id,x])=>`<li>${esc(x.t)} ${readOnly?"":`<button data-rm="${k}" data-i="${id}" aria-label="Remover">×</button>`}</li>`).join("")}
 }
 function render(){const dl=$("projs");if(dl)dl.innerHTML=projList().map(p=>`<option value="${esc(p)}"></option>`).join("");
-  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",String(t.dataset.view===VIEW)));$("vDaily").hidden=VIEW!=="daily";$("vPlan").hidden=VIEW!=="plan";$("vEu").hidden=VIEW!=="eu";document.body.dataset.view=VIEW;
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",String(t.dataset.view===VIEW)));$("vDaily").hidden=VIEW!=="daily";$("vPlan").hidden=VIEW!=="plan";$("vEu").hidden=VIEW!=="eu";document.body.dataset.tela=VIEW;
   keepFocus(()=>{if(VIEW==="plan"){drawSteps();drawBoard();drawLists();if(document.activeElement!==$("goal"))$("goal").value=D.meta.goal||""}else if(VIEW==="eu")drawMine();else drawDaily()});$("goal").disabled=readOnly}
 
 /* ---------- daily ---------- */
