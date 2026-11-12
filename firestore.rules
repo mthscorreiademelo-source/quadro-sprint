@@ -1,0 +1,38 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function admin() {
+      return request.auth != null && request.auth.uid == 'Ss2wKdhqndf3Usm7c9io23SKTlu2';
+    }
+    function codigo(c) {
+      return get(/databases/$(database)/documents/codigos/$(c)).data;
+    }
+    function membro() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/acessos/$(request.auth.uid))
+        && get(/databases/$(database)/documents/acessos/$(request.auth.uid)).data.ate > request.time;
+    }
+
+    // Código do QR: quem tem o código lê só aquele documento; ninguém lista.
+    match /codigos/{c} {
+      allow get: if request.auth != null;
+      allow list, create, update, delete: if admin();
+    }
+
+    // Acesso do celular: a pessoa só se registra com um código válido, e o prazo é o do código.
+    match /acessos/{uid} {
+      allow get: if admin() || (request.auth != null && request.auth.uid == uid);
+      allow list, delete: if admin();
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['codigo', 'ate'])
+        && exists(/databases/$(database)/documents/codigos/$(request.resource.data.codigo))
+        && codigo(request.resource.data.codigo).ate > request.time
+        && request.resource.data.ate == codigo(request.resource.data.codigo).ate;
+    }
+
+    // Dados do quadro: organizador sempre; celular só enquanto o acesso do dia vale.
+    match /{coll}/{doc} {
+      allow read, write: if coll != 'codigos' && coll != 'acessos' && (admin() || membro());
+    }
+  }
+}

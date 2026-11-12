@@ -837,7 +837,7 @@ function subscribe(){
   let pend=10,ok=false;
   const late=setTimeout(()=>{if(!ok)setSync("O quadro não respondeu ainda: o que aparece pode estar desatualizado","warn")},10000);
   const seen=new Set();
-  const done=(k,snap)=>{if(ok||!snap||!snap.metadata||snap.metadata.fromCache||seen.has(k))return;seen.add(k);if(seen.size>=pend){ok=true;clearTimeout(late);setSync("Ao vivo: todos veem as mesmas mudanças","ok")}};
+  const done=(k,snap)=>{if(ok||!snap||!snap.metadata||snap.metadata.fromCache||seen.has(k))return;seen.add(k);if(seen.size>=pend||k==="cards"){ok=true;clearTimeout(late);setSync("Ao vivo: todos veem as mesmas mudanças","ok")}};
   const err=e=>{clearTimeout(late);if(e&&e.code==="permission-denied"&&!ADMIN)gate("Seu acesso terminou. Escaneie o QR da reunião.");else setSync("Conexão com o quadro caiu: recarregue a página","warn")};
   db.doc("board/equipe").onSnapshot(snap=>{COLS=(snap.exists&&snap.data().cols)||[];COLS.forEach(c=>{if(c.min&&MIN[c.id]===undefined)MIN[c.id]=true});render();done("equipe",snap)},err);
   db.doc("board/daily").onSnapshot(snap=>{D.daily=snap.exists?snap.data():{};render();done("daily",snap)},err);
