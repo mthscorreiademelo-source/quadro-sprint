@@ -324,6 +324,22 @@ body.membro .tabs{margin-bottom:4px}
 #vEu .mv{gap:6px}
 #vEu .mv button{font-size:13px;padding:6px 10px}
 #vEu .addnew input,#vEu .plan input{font-size:15px;padding:8px}
+
+.timer.bub{--ts:150px;width:var(--ts);height:var(--ts);top:calc(10px + env(safe-area-inset-top,0px));right:16px;display:block;padding:0;gap:0;border-radius:50%;background:#0b1a33;color:#fff;box-shadow:0 8px 28px rgba(0,20,60,.4);touch-action:none;cursor:grab;user-select:none;z-index:30}
+.timer.bub.drag{cursor:grabbing;box-shadow:0 14px 40px rgba(0,20,60,.5)}
+.timer.bub[data-k="warn"],.timer.bub[data-k="over"]{background:#0b1a33}
+.timer.bub .ring{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.timer.bub .trk{fill:none;stroke:rgba(255,255,255,.14);stroke-width:7}
+.timer.bub .arc{fill:none;stroke:#3d7bff;stroke-width:7;stroke-linecap:round;stroke-dasharray:100;stroke-dashoffset:0;transition:stroke-dashoffset .25s linear,stroke .3s}
+.timer.bub[data-k="warn"] .arc{stroke:#ed741e}
+.timer.bub[data-k="over"] .arc{stroke:#e5484d}
+.timer.bub[data-k="over"] .clk{color:#ff8a8d}
+.timer.bub .in{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(var(--ts)*.04)}
+.timer.bub .clk{font-size:calc(var(--ts)*.25);min-width:0}
+.timer.bub .tb{display:flex;gap:4px}
+.timer.bub button{font-size:max(10px,calc(var(--ts)*.072));padding:calc(var(--ts)*.025) calc(var(--ts)*.06);cursor:pointer}
+.timer.bub .rs{position:absolute;right:4%;bottom:4%;width:18px;height:18px;border-radius:50%;background:#ed741e;border:2px solid #fff;cursor:nwse-resize;opacity:.85}
+.timer.bub:not(:hover) .rs{opacity:.35}
 </style>
 
 <nav class="tabs" role="tablist" aria-label="Telas do quadro">
@@ -349,7 +365,11 @@ body.membro .tabs{margin-bottom:4px}
 <button class="qrtab" id="qrTab" title="Mostrar o QR">QR</button>
 <div class="wrap" id="vEu" hidden></div>
 <div class="wrap" id="vDaily" hidden>
-  <div class="timer" id="dTimer" role="timer" aria-label="Tempo da daily"><span class="clk" id="tClk">15:00</span><button id="tGo">Iniciar</button><button id="tZero">Zerar</button></div>
+  <div class="timer bub" id="dTimer" role="timer" aria-label="Tempo da daily" title="Arraste para mover">
+    <svg class="ring" viewBox="0 0 100 100" aria-hidden="true"><circle class="trk" cx="50" cy="50" r="44"/><circle class="arc" id="tArc" cx="50" cy="50" r="44" pathLength="100"/></svg>
+    <div class="in"><span class="clk" id="tClk">15:00</span><span class="tb"><button id="tGo">Iniciar</button><button id="tZero">Zerar</button></span></div>
+    <span class="rs" id="tRs" title="Arraste para mudar o tamanho" aria-hidden="true"></span>
+  </div>
   <header class="dhead">
     <div>
       <div class="kick">Hub SENAI · sprint de 10 a 18/11</div>
@@ -758,6 +778,21 @@ function tDraw(){const r=TDUR-tEl();const over=r<0;const s=Math.ceil(Math.abs(r)
   $("dTimer").dataset.k=over?"over":r<=2*60*1000?"warn":"";$("tGo").textContent=T.ini?"Pausar":T.acum?"Continuar":"Iniciar"}
 $("tGo").onclick=()=>{if(T.ini){T.acum+=Date.now()-T.ini;T.ini=null}else T.ini=Date.now();tDraw()};
 $("tZero").onclick=()=>{T.ini=null;T.acum=0;tDraw()};
+const _tDraw0=tDraw;tDraw=function(){_tDraw0();const r=TDUR-tEl();$("tArc").style.strokeDashoffset=r<0?0:(100*(1-r/TDUR)).toFixed(2)};
+(function(){const el=$("dTimer");let st=null;
+  const load=()=>{try{return JSON.parse(localStorage.getItem("timer-bolha")||"null")}catch(e){return null}};
+  const save=()=>{try{localStorage.setItem("timer-bolha",JSON.stringify({x:el.offsetLeft,y:el.offsetTop,s:el.offsetWidth}))}catch(e){}};
+  const place=(x,y,s)=>{s=Math.max(90,Math.min(420,s||el.offsetWidth));el.style.setProperty("--ts",s+"px");
+    x=Math.max(0,Math.min(innerWidth-s,x));y=Math.max(0,Math.min(innerHeight-s,y));el.style.left=x+"px";el.style.top=y+"px";el.style.right="auto"};
+  const p=load();if(p)place(p.x,p.y,p.s);
+  el.addEventListener("pointerdown",e=>{if(e.target.closest("button"))return;const rs=e.target===$("tRs");
+    st={rs,x:e.clientX,y:e.clientY,l:el.offsetLeft,t:el.offsetTop,s:el.offsetWidth};el.setPointerCapture(e.pointerId);el.classList.add("drag");e.preventDefault()});
+  el.addEventListener("pointermove",e=>{if(!st)return;const dx=e.clientX-st.x,dy=e.clientY-st.y;
+    if(st.rs)place(st.l,st.t,st.s+Math.max(dx,dy));else place(st.l+dx,st.t+dy,st.s)});
+  const end=()=>{if(!st)return;st=null;el.classList.remove("drag");save()};
+  el.addEventListener("pointerup",end);el.addEventListener("pointercancel",end);
+  addEventListener("resize",()=>{if(el.style.left)place(el.offsetLeft,el.offsetTop,el.offsetWidth)});
+})();
 setInterval(()=>{if(T.ini)tDraw()},250);tDraw();
 function toast(t){const el=$("toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2200)}
 
