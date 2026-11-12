@@ -289,10 +289,15 @@ textarea#out{width:100%;min-height:160px;font:12px/1.4 ui-monospace,Consolas,mon
 .qrmini{display:none;position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:16px;z-index:25;background:#fff;border:0;border-radius:14px;padding:10px 10px 8px;box-shadow:0 6px 24px rgba(0,20,60,.35);flex-direction:column;align-items:center;gap:6px;cursor:zoom-in}
 .qrmini b{font-size:12px;color:#0047cf;text-transform:uppercase;letter-spacing:.3px}
 .qrmini img,.qrmini canvas{display:block}
-body.admin.qrOn .qrmini{display:flex}
-body[data-tela="eu"] .qrmini{display:none!important}
-body.admin.qrOn{padding-bottom:250px}
-body.membro .tabs .tab,body.membro #outBtn,body.membro .navb.adm,body.membro .qrmini{display:none!important}
+.qrbig{border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:zoom-in}
+.qrmin{position:absolute;top:-10px;left:-10px;width:28px;height:28px;border-radius:50%;border:0;background:#0b1a33;color:#fff;font-weight:700;font-size:16px;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.qrtab{display:none;position:fixed;right:0;bottom:40px;z-index:25;border:0;border-radius:10px 0 0 10px;background:#ed741e;color:#fff;font-weight:700;font-size:13px;padding:12px 8px;box-shadow:0 4px 14px rgba(0,20,60,.3)}
+body.admin.qrOn:not(.qrMin) .qrmini{display:flex}
+body.admin.qrOn.qrMin .qrtab{display:block}
+body[data-tela="eu"] .qrmini,body[data-tela="eu"] .qrtab{display:none!important}
+body.admin.qrOn:not(.qrMin){padding-bottom:250px}
+[data-prio],[data-ppl]{display:none!important}
+body.membro .tabs .tab,body.membro #outBtn,body.membro .navb.adm,body.membro .qrmini,body.membro .qrtab{display:none!important}
 body.membro{font-size:16px}
 body.membro .tabs{margin-bottom:4px}
 #vEu{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
@@ -340,7 +345,8 @@ body.membro .tabs{margin-bottom:4px}
   <p>Escaneie, escolha seu nome e acompanhe a sua raia. Vale até o fim de hoje.</p>
   <button id="qrClose">Fechar</button>
 </div></div>
-<button class="qrmini" id="qrMini" title="Ampliar o QR"><span id="qrcMini"></span><b>Acompanhe pelo celular</b></button>
+<div class="qrmini" id="qrMini"><button class="qrmin" id="qrMinBtn" title="Minimizar o QR" aria-label="Minimizar o QR">–</button><button class="qrbig" id="qrBig" title="Ampliar o QR"><span id="qrcMini"></span><b>Acompanhe pelo celular</b></button></div>
+<button class="qrtab" id="qrTab" title="Mostrar o QR">QR</button>
 <div class="wrap" id="vEu" hidden></div>
 <div class="wrap" id="vDaily" hidden>
   <div class="timer" id="dTimer" role="timer" aria-label="Tempo da daily"><span class="clk" id="tClk">15:00</span><button id="tGo">Iniciar</button><button id="tZero">Zerar</button></div>
@@ -827,7 +833,11 @@ async function start(){
   $("gAdmin").onclick=async()=>{try{await AUTH.signInWithPopup(new firebase.auth.GoogleAuthProvider())}catch(e){gate("Não foi possível entrar: "+(e.code||e.message))}};
   $("outBtn").onclick=async()=>{try{localStorage.removeItem("quadro-eu")}catch(e){}await AUTH.signOut();location.reload()};
   $("qrBtn").onclick=()=>makeQR(fs);
-  $("qrMini").onclick=()=>makeQR(fs);
+  $("qrBig").onclick=()=>makeQR(fs);
+  const qrMin=m=>{document.body.classList.toggle("qrMin",m);try{localStorage.setItem("quadro-qrmin",m?"1":"")}catch(e){}};
+  try{if(localStorage.getItem("quadro-qrmin"))document.body.classList.add("qrMin")}catch(e){}
+  $("qrMinBtn").onclick=()=>qrMin(true);
+  $("qrTab").onclick=()=>qrMin(false);
   $("qrClose").onclick=()=>{$("qrov").hidden=true};
   let started=false;
   AUTH.onAuthStateChanged(async u=>{
