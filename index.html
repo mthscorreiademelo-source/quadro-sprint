@@ -253,6 +253,11 @@ textarea#out{width:100%;min-height:160px;font:12px/1.4 ui-monospace,Consolas,mon
 .dtools button{border:1.5px solid var(--blue);background:var(--blue);color:var(--paper);border-radius:8px;padding:8px 14px;font-weight:700}
 .legend2{font-size:12px;color:var(--muted)}
 .dtools button.ghost{background:var(--paper);color:var(--blue2)}
+.ded{display:flex;flex-direction:column;gap:5px}
+.ded .tt{font:inherit;font-size:13px;line-height:1.35;width:100%;resize:vertical;border:1.5px solid var(--blue);border-radius:5px;padding:4px 6px;background:var(--paper);color:var(--ink);box-sizing:border-box}
+.ded .pj{font:inherit;font-size:12px;width:100%;border:1.5px solid var(--line);border-radius:5px;padding:3px 6px;background:var(--paper);color:var(--ink);box-sizing:border-box}
+.ded .dedb{display:flex;justify-content:flex-end}
+.dc.editing{border-color:var(--blue)}
 .dc.prio{border-color:var(--orange);box-shadow:0 0 0 1px var(--orange)}
 .tag.prio{background:var(--orange);color:#fff}
 .tag.sh{background:var(--blueL);color:var(--blue2);text-transform:none}
@@ -596,7 +601,8 @@ const QS=[
  {q:"O que eu vou fazer até a daily de amanhã?",h:"Confirmar o previsto. Nada previsto? Puxar da planning"},
  {q:"O que consegui destravar sozinho e o que não consegui?",h:"Concluído, ou travado com o plano para destravar"}];
 const QHL=[["prev","and","conc"],["prev"],["trav","conc"]];
-let PULL=null,DRAG=null,RESCH=null,PEOP=null,HIST=false,DROPB=null;
+let PULL=null,DRAG=null,RESCH=null,PEOP=null,HIST=false,DROPB=null,DEDIT=null;
+function closeDEdit(){if(!DEDIT)return;commitEdit();DEDIT=null;render()}
 let SORT="prazo";try{SORT=localStorage.getItem("daily-sort")||"prazo"}catch(e){}
 const nmOf=id=>(COLS.find(c=>c.id===id)||{}).n||id;
 const lanesOf=c=>[c.col,...(c.com||[]).filter(x=>x&&x!==c.col)];
@@ -647,9 +653,15 @@ function dcard(id,c,col,lane){const d=D.dly[id]||{};const tags=[];
   const ppl=PEOP===id+"|"+lane?`<div class="ppl"><label class="h" for="pd-${id}">Responsável (passar para outra pessoa)</label>
     <select id="pd-${id}" data-dono="${id}">${COLS.map(p=>`<option value="${p.id}"${p.id===c.col?" selected":""}>${p.n}</option>`).join("")}</select>
     <label class="h">Junto com</label><span class="chk">${COLS.filter(p=>p.id!==c.col).map(p=>`<label><input type="checkbox" data-com="${id}" value="${p.id}"${(c.com||[]).includes(p.id)?" checked":""}>${p.n}</label>`).join("")}</span></div>`:"";
-  return `<div class="dc${c.prio?" prio":""}${DROPB===id?" dropb":""}" data-c="${col}" data-dc="${id}" data-dl="${lane}"${readOnly?"":` draggable="true"`}>
-    <span class="t">${esc(c.t)}</span>${c.proj?`<span class="proj">${esc(c.proj)}</span>`:""}${pai}${tags.length?`<span class="tags">${tags.join("")}</span>`:""}
-    ${readOnly?"":`<span class="mv">${to.map(([k,l])=>`<button data-mv="${id}" data-to="${k}">${l}</button>`).join("")}${col==="conc"?"":`<button data-prio="${id}" class="${c.prio?"on":""}" title="${c.prio?"Tirar a prioridade":"Marcar como prioridade: vai para o topo"}">★</button>`}<button data-ppl="${id}" data-pl="${lane}" title="Passar para outra pessoa ou fazer junto">${PEOP===id+"|"+lane?"Fechar":"Pessoas"}</button></span>`}${RESCH===id&&col==="prev"?cal(id,c):""}${ppl}${plan}</div>`}
+  const ed=DEDIT===id+"|"+lane&&!readOnly;
+  const head=ed?`<div class="ded"><textarea class="tt" id="tt-${id}" data-tt="${id}" rows="2" aria-label="Tarefa" placeholder="Ação começando com verbo">${esc(c.t)}</textarea>
+    <input class="pj" id="pj-${id}" data-pj="${id}" list="projs" value="${esc(c.proj||"")}" placeholder="Cliente ou projeto" aria-label="Cliente ou projeto">
+    <span class="opts"><label>Início<select data-f="ini" data-k="${id}">${opt(DIAS,c.ini)}</select></label><label>Prazo<select data-f="fim" data-k="${id}">${opt(DIAS,c.fim)}</select></label><label>Esforço<select data-f="esf" data-k="${id}">${opt(ESF,c.esf)}</select></label></span>
+    <span class="dedb"><button class="okbtn" data-dok="1">Pronto</button></span></div>`
+    :`<span class="t">${esc(c.t)}</span>${c.proj?`<span class="proj">${esc(c.proj)}</span>`:""}`;
+  return `<div class="dc${c.prio?" prio":""}${DROPB===id?" dropb":""}${ed?" editing":""}" data-c="${col}" data-dc="${id}" data-dl="${lane}"${readOnly||ed?"":` draggable="true"`}>
+    ${head}${pai}${tags.length?`<span class="tags">${tags.join("")}</span>`:""}
+    ${readOnly||ed?"":`<span class="mv">${to.map(([k,l])=>`<button data-mv="${id}" data-to="${k}">${l}</button>`).join("")}<button data-ed="${id}" data-el="${lane}" title="Editar texto, projeto, início, prazo e esforço">Editar</button>${col==="conc"?"":`<button data-prio="${id}" class="${c.prio?"on":""}" title="${c.prio?"Tirar a prioridade":"Marcar como prioridade: vai para o topo"}">★</button>`}<button data-ppl="${id}" data-pl="${lane}" title="Passar para outra pessoa ou fazer junto">${PEOP===id+"|"+lane?"Fechar":"Pessoas"}</button></span>`}${RESCH===id&&col==="prev"?cal(id,c):""}${ppl}${plan}</div>`}
 function cal(id,c){const fut=DIAS.filter(d=>num(d[0])>num(HOJE));
   return `<div class="cal"><label>Quando vai ser feita?</label><div class="days">${DIAS.map(([d,l])=>{const ok=num(d)>num(HOJE);const [w,dd]=l.split(" ");
     return `<button data-rd="${id}" data-day="${d}"${ok?"":" disabled"} class="${c.fim===d?"fim":""}" title="${ok?"Remarcar para "+l:"Dia já passou"}"><small>${w}</small>${dd.slice(0,2)}</button>`}).join("")}</div>
@@ -725,6 +737,8 @@ document.addEventListener("click",e=>{
   const tb=e.target.closest("[data-view]");if(tb){VIEW=tb.dataset.view;try{localStorage.setItem("quadro-view",VIEW);history.replaceState(null,"","#"+VIEW)}catch(er){}render();return}
   if(VIEW==="plan")return;
   const eu=e.target.closest("[data-eu]");if(eu){MEU=eu.dataset.eu||null;try{MEU?localStorage.setItem("quadro-eu",MEU):localStorage.removeItem("quadro-eu")}catch(er){}render();window.scrollTo(0,0);return}
+  if(e.target.closest("[data-dok]")){closeDEdit();return}
+  const edb=e.target.closest("[data-ed]");if(edb){if(DEDIT)commitEdit();EDIT=null;DEDIT=edb.dataset.ed+"|"+edb.dataset.el;render();const ta=$("tt-"+edb.dataset.ed);if(ta){ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length)}return}
   const rd=e.target.closest("[data-rd]");if(rd){remarcar(rd.dataset.rd,rd.dataset.day);return}
   const pr=e.target.closest("[data-prio]");if(pr){const c=D.cards[pr.dataset.prio];if(c&&!readOnly)put("cards",pr.dataset.prio,{...c,prio:!c.prio});return}
   const pp=e.target.closest("[data-ppl]");if(pp){const k=pp.dataset.ppl+"|"+pp.dataset.pl;PEOP=PEOP===k?null:k;render();return}
@@ -742,7 +756,8 @@ document.addEventListener("click",e=>{
   const pn=e.target.closest("[data-pnew]");if(pn){addNow(pn.dataset.pnew);return}
   const ka=e.target.closest("[data-kadd]");if(ka){addKid(ka.dataset.kadd);return}
 },true);
-document.addEventListener("keydown",e=>{if(VIEW==="plan"||e.key!=="Enter")return;const t=e.target;
+document.addEventListener("keydown",e=>{if(VIEW!=="plan"&&DEDIT&&(e.key==="Escape"||(e.key==="Enter"&&!e.shiftKey&&e.target.dataset&&(e.target.dataset.tt||e.target.dataset.pj)))){e.preventDefault();e.stopPropagation();closeDEdit();return}
+  if(VIEW==="plan"||e.key!=="Enter")return;const t=e.target;
   if(t.dataset&&t.dataset.kt){e.preventDefault();addKid(t.dataset.kt)}else if(t.dataset&&t.dataset.pn){e.preventDefault();addNow(t.dataset.pn)}else if(t.dataset&&t.dataset.trava){e.preventDefault();t.blur()}},true);
 document.addEventListener("change",e=>{const t=e.target;if(VIEW==="plan"||!t.dataset)return;
   if(t.dataset.dsort){SORT=t.value;try{localStorage.setItem("daily-sort",SORT)}catch(er){}render();return}
