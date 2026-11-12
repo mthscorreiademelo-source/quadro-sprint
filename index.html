@@ -1,3 +1,7 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Quadro da sprint</title>
 <meta name="robots" content="noindex,nofollow">
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -281,7 +285,24 @@ textarea#out{width:100%;min-height:160px;font:12px/1.4 ui-monospace,Consolas,mon
 .qrbox{background:#fff;color:#0b1a33;border-radius:16px;padding:24px;display:flex;flex-direction:column;align-items:center;gap:12px;max-width:380px;text-align:center}
 .qrbox h2{margin:0;font-family:var(--display);font-weight:400;font-size:28px;text-transform:uppercase;color:#0047cf}
 .qrbox button{border:0;border-radius:8px;background:#0047cf;color:#fff;font-weight:700;padding:8px 18px}
-#vEu{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+.qrmini{display:none;position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:16px;z-index:25;background:#fff;border:0;border-radius:14px;padding:10px 10px 8px;box-shadow:0 6px 24px rgba(0,20,60,.35);flex-direction:column;align-items:center;gap:6px;cursor:zoom-in}
+.qrmini b{font-size:12px;color:#0047cf;text-transform:uppercase;letter-spacing:.3px}
+.qrmini img,.qrmini canvas{display:block}
+body.admin.qrOn .qrmini{display:flex}
+body[data-view="eu"] .qrmini{display:none!important}
+body.admin.qrOn{padding-bottom:250px}
+body.membro .tabs .tab,body.membro #outBtn,body.membro .navb.adm,body.membro .qrmini{display:none!important}
+body.membro{font-size:16px}
+body.membro .tabs{margin-bottom:4px}
+#vEu{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+#vEu .tag{font-size:11px;padding:2px 8px}
+#vEu .dc{padding:10px 12px;gap:6px}
+#vEu .dc .proj{font-size:13px}
+#vEu .mv button{font-size:14px;padding:8px 12px;border-radius:8px}
+#vEu .pullbtn{font-size:14px;padding:10px}
+#vEu .addnew button{font-size:18px;padding:0 14px}
+#vEu .mvez{font-size:15px}
+#vEu .msec h2{font-size:22px}
 #vEu[hidden]{display:none}
 .mtop{display:flex;justify-content:space-between;align-items:flex-end;gap:8px}
 .mh{margin:0;font-family:var(--display);font-weight:400;font-size:30px;text-transform:uppercase;color:var(--blue2)}
@@ -318,6 +339,7 @@ textarea#out{width:100%;min-height:160px;font:12px/1.4 ui-monospace,Consolas,mon
   <p>Escaneie, escolha seu nome e acompanhe a sua raia. Vale até o fim de hoje.</p>
   <button id="qrClose">Fechar</button>
 </div></div>
+<button class="qrmini" id="qrMini" title="Ampliar o QR"><span id="qrcMini"></span><b>Acompanhe pelo celular</b></button>
 <div class="wrap" id="vEu" hidden></div>
 <div class="wrap" id="vDaily" hidden>
   <div class="timer" id="dTimer" role="timer" aria-label="Tempo da daily"><span class="clk" id="tClk">15:00</span><button id="tGo">Iniciar</button><button id="tZero">Zerar</button></div>
@@ -533,7 +555,7 @@ function drawLists(){
     $(k).innerHTML=arr.map(([id,x])=>`<li>${esc(x.t)} ${readOnly?"":`<button data-rm="${k}" data-i="${id}" aria-label="Remover">×</button>`}</li>`).join("")}
 }
 function render(){const dl=$("projs");if(dl)dl.innerHTML=projList().map(p=>`<option value="${esc(p)}"></option>`).join("");
-  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",String(t.dataset.view===VIEW)));$("vDaily").hidden=VIEW!=="daily";$("vPlan").hidden=VIEW!=="plan";$("vEu").hidden=VIEW!=="eu";
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",String(t.dataset.view===VIEW)));$("vDaily").hidden=VIEW!=="daily";$("vPlan").hidden=VIEW!=="plan";$("vEu").hidden=VIEW!=="eu";document.body.dataset.view=VIEW;
   keepFocus(()=>{if(VIEW==="plan"){drawSteps();drawBoard();drawLists();if(document.activeElement!==$("goal"))$("goal").value=D.meta.goal||""}else if(VIEW==="eu")drawMine();else drawDaily()});$("goal").disabled=readOnly}
 
 /* ---------- daily ---------- */
@@ -804,6 +826,7 @@ async function start(){
   $("gAdmin").onclick=async()=>{try{await AUTH.signInWithPopup(new firebase.auth.GoogleAuthProvider())}catch(e){gate("Não foi possível entrar: "+(e.code||e.message))}};
   $("outBtn").onclick=async()=>{try{localStorage.removeItem("quadro-eu")}catch(e){}await AUTH.signOut();location.reload()};
   $("qrBtn").onclick=()=>makeQR(fs);
+  $("qrMini").onclick=()=>makeQR(fs);
   $("qrClose").onclick=()=>{$("qrov").hidden=true};
   let started=false;
   AUTH.onAuthStateChanged(async u=>{
@@ -818,9 +841,10 @@ async function start(){
         if(!a.exists||a.data().ate.toMillis()<Date.now()){gate("Seu acesso de hoje terminou. Escaneie o QR da reunião.");return}}
       catch(e){gate("Seu acesso terminou. Escaneie o QR da reunião.");return}
       if(pessoa){MEU=pessoa;try{localStorage.setItem("quadro-eu",pessoa)}catch(e){}}
-      if(!location.hash)VIEW="eu";
+      VIEW="eu";document.body.classList.add("membro");
     }
     $("gate").hidden=true;document.body.classList.toggle("admin",ADMIN);
+    if(ADMIN)try{const v=JSON.parse(localStorage.getItem("quadro-qr")||"null");if(v&&v.dia===HOJE)showQR(v.id,false)}catch(e){}
     if(!started){started=true;db=fs;subscribe()}
   });
 }
@@ -829,9 +853,11 @@ async function makeQR(fs){let id=null;try{const v=JSON.parse(localStorage.getIte
     const dia=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Maceio"}).format(new Date());
     try{await fs.collection("codigos").doc(id).set({ate:firebase.firestore.Timestamp.fromDate(new Date(dia+"T23:59:59-03:00")),criado:firebase.firestore.FieldValue.serverTimestamp()})}catch(e){toast("Não gerou o QR: "+(e.code||e.message));return}
     try{localStorage.setItem("quadro-qr",JSON.stringify({dia:HOJE,id}))}catch(e){}}
-  const url=location.origin+location.pathname+"?c="+id+"#eu";
-  $("qrc").innerHTML="";if(window.QRCode)new QRCode($("qrc"),{text:url,width:300,height:300,correctLevel:QRCode.CorrectLevel.M});else $("qrc").textContent=url;
-  $("qrov").hidden=false}
+  showQR(id,true)}
+function showQR(id,big){const url=location.origin+location.pathname+"?c="+id+"#eu";
+  const draw=(el,w)=>{el.innerHTML="";if(window.QRCode)new QRCode(el,{text:url,width:w,height:w,correctLevel:QRCode.CorrectLevel.M});else el.textContent=url};
+  draw($("qrcMini"),180);document.body.classList.add("qrOn");
+  if(big){draw($("qrc"),320);$("qrov").hidden=false}}
 function subscribe(){
   mode="shared";
   let pend=10,ok=false;
